@@ -57,12 +57,12 @@ html, body, .stApp { font-family: 'Inter', sans-serif !important; }
 .stTabs [data-baseweb="tab"] {
     background: transparent; border-radius: 0; color: #64748B;
     font-weight: 500; font-size: .92rem; padding: 10px 24px;
-    border-bottom: 2px solid transparent;
+    border-bottom: none !important;
 }
 .stTabs [aria-selected="true"] {
     color: #29B5E8 !important;
-    border-bottom: 2px solid #29B5E8 !important;
-    background: transparent !important;
+    background: rgba(41,181,232,.06) !important;
+    border-radius: 6px !important;
 }
 
 [data-testid="metric-container"] {
@@ -300,9 +300,6 @@ with m5:
     st.metric("Budget", budget,
               delta=f"Spent {spent}" if ov.get("Confirmed Spend ($)") else None,
               delta_color="off")
-
-if kpis_total > 0:
-    st.progress(kpis_met / kpis_total, text=f"{kpis_met} of {kpis_total} KPIs met")
 
 st.divider()
 
