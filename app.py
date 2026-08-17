@@ -113,13 +113,13 @@ def _retry(fn, retries=3, wait=8):
 
 # ── Google Sheets ─────────────────────────────────────────────────────────────
 @st.cache_resource
-def get_client():
-    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=SCOPES)
-    return gspread.authorize(creds)
-
-@st.cache_resource
 def get_ss():
-    return get_client().open_by_key(st.secrets["spreadsheet_id"])
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=SCOPES
+    )
+    gc = gspread.Client(auth=creds)
+    gc.login()
+    return gc.open_by_key(st.secrets["spreadsheet_id"])
 
 @st.cache_resource
 def ensure_sheets():
@@ -174,9 +174,11 @@ def save_overview(values):
     for i, r in enumerate(rows[1:], start=2):
         if r and r[0] == POC_ID:
             _retry(lambda i=i, row=row: ws.update(f"A{i}", [row]))
+            st.session_state["ov"] = values   # immediate UI update
             st.cache_data.clear()
             return
     _retry(lambda: ws.append_row(row))
+    st.session_state["ov"] = values           # immediate UI update
     st.cache_data.clear()
 
 def save_rows(sheet, headers, df):
@@ -187,6 +189,9 @@ def save_rows(sheet, headers, df):
     new_rows = [[POC_ID] + [str(row.get(h, "")) for h in headers] for _, row in df.iterrows()]
     if new_rows:
         _retry(lambda: ws.append_rows(new_rows, value_input_option="USER_ENTERED"))
+    # Store in session_state so data shows immediately after rerun
+    key = "kpis" if sheet == "KPIs" else "actions"
+    st.session_state[key] = df
     st.cache_data.clear()
 
 
@@ -223,10 +228,17 @@ except Exception as e:
 if "notify" in st.session_state:
     st.toast(st.session_state.pop("notify"), icon="✅")
 
-# ── Load ──────────────────────────────────────────────────────────────────────
-ov      = load_overview()
-kpis    = load_kpis()
-actions = load_actions()
+# ── Load — session_state first, then Google Sheets ───────────────────────────
+if "ov" not in st.session_state:
+    st.session_state["ov"] = load_overview()
+if "kpis" not in st.session_state:
+    st.session_state["kpis"] = load_kpis()
+if "actions" not in st.session_state:
+    st.session_state["actions"] = load_actions()
+
+ov      = st.session_state["ov"]
+kpis    = st.session_state["kpis"]
+actions = st.session_state["actions"]
 
 poc_status = ov.get("Status", "Planning")
 DISPLAY_KPI = [h for h in KPI_HEADERS if h != "POC_ID"]
@@ -263,6 +275,8 @@ with hdr_r:
     st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
     if st.button("↺ Refresh", help="Reload from Google Sheets"):
         with st.spinner("Refreshing…"):
+            for k in ["ov", "kpis", "actions"]:
+                st.session_state.pop(k, None)
             st.cache_data.clear()
         st.rerun()
 
