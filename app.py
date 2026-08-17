@@ -117,9 +117,7 @@ def get_ss():
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"], scopes=SCOPES
     )
-    gc = gspread.Client(auth=creds)
-    gc.login()
-    return gc.open_by_key(st.secrets["spreadsheet_id"])
+    return gspread.authorize(creds).open_by_key(st.secrets["spreadsheet_id"])
 
 @st.cache_resource
 def ensure_sheets():
