@@ -51,7 +51,9 @@ html, body, .stApp { font-family: 'Inter', sans-serif !important; }
 #MainMenu, footer, .stDeployButton { display: none !important; }
 .block-container { max-width: 1400px !important; padding: 1.5rem 2.5rem 3rem !important; }
 
-.stTabs [data-baseweb="tab-list"] { border-bottom: none; gap: 0; }
+.stTabs [data-baseweb="tab-list"]      { border-bottom: none; gap: 0; }
+.stTabs [data-baseweb="tab-highlight"] { display: none !important; }
+.stTabs [data-baseweb="tab-border"]    { display: none !important; }
 .stTabs [data-baseweb="tab"] {
     background: transparent; border-radius: 0; color: #64748B;
     font-weight: 500; font-size: .92rem; padding: 10px 24px;
@@ -197,7 +199,7 @@ def save_rows(sheet, headers, df):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def fmt_money(v):
     try:
-        return f"₹{int(str(v).replace(',','').replace('₹','').replace('$','')):,}"
+        return f"${int(str(v).replace(',','').replace('₹','').replace('$','')):,}"
     except Exception:
         return str(v) if v else "—"
 
