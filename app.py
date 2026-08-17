@@ -51,15 +51,15 @@ html, body, .stApp { font-family: 'Inter', sans-serif !important; }
 #MainMenu, footer, .stDeployButton { display: none !important; }
 .block-container { max-width: 1400px !important; padding: 1.5rem 2.5rem 3rem !important; }
 
-.stTabs [data-baseweb="tab-list"] { border-bottom: 1px solid #E2E8F0; gap: 0; }
+.stTabs [data-baseweb="tab-list"] { border-bottom: none; gap: 0; }
 .stTabs [data-baseweb="tab"] {
     background: transparent; border-radius: 0; color: #64748B;
     font-weight: 500; font-size: .92rem; padding: 10px 24px;
-    border-bottom: none;
+    border-bottom: 2px solid transparent;
 }
 .stTabs [aria-selected="true"] {
     color: #29B5E8 !important;
-    box-shadow: inset 0 -2px 0 #29B5E8;
+    border-bottom: 2px solid #29B5E8 !important;
     background: transparent !important;
 }
 
