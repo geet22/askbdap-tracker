@@ -383,165 +383,112 @@ with tab_actions:
 
 # ─── POC Details ──────────────────────────────────────────────────────────────
 with tab_details:
-    details_filled = bool(ov.get("Technical Champion") or ov.get("POC Objective") or ov.get("Business Unit"))
     if "editing_details" not in st.session_state:
-        st.session_state["editing_details"] = not details_filled  # open form if blank, read-only if filled
+        st.session_state["editing_details"] = False
 
-    def ro(label, value, multiline=False):
-        val = (str(value).replace("\n", "<br>") if multiline else str(value)) if value else "—"
-        st.markdown(
-            f'<div style="margin-bottom:14px;">'
-            f'<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;'
-            f'letter-spacing:.08em;color:#94A3B8;margin-bottom:3px;">{label}</div>'
-            f'<div style="font-size:.88rem;color:#0F172A;line-height:1.6;">{val}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+    edit_all = st.session_state["editing_details"]
+    details_filled = bool(ov.get("Technical Champion") or ov.get("POC Objective") or ov.get("Business Unit"))
 
-    # ── Read-only view ─────────────────────────────────────────────────────
-    if not st.session_state["editing_details"]:
-        hdr_l, hdr_r = st.columns([6, 1])
-        with hdr_l:
-            st.markdown("**POC Details**")
-        with hdr_r:
-            if st.button("✏️  Edit", key="edit_btn"):
+    def unlocked(val):
+        """Editable if empty OR in full-edit mode."""
+        return edit_all or not bool(str(val).strip() if val else "")
+
+    hdr_l, hdr_r = st.columns([6, 1])
+    with hdr_l:
+        st.markdown("**POC Details** — empty fields are editable · ✏️ Edit All to change saved fields")
+    with hdr_r:
+        if not edit_all and details_filled:
+            if st.button("✏️  Edit All", key="edit_btn"):
                 st.session_state["editing_details"] = True
                 st.rerun()
+        elif edit_all:
+            if st.button("✕ Cancel", key="cancel_btn"):
+                st.session_state["editing_details"] = False
+                st.rerun()
 
-        ra, rb = st.columns(2)
-        with ra:
+    with st.form("details_form"):
+        col_a, col_b = st.columns(2)
+
+        with col_a:
             with st.container(border=True):
                 st.markdown("**Contacts**")
-                ro("Technical Champion",        ov.get("Technical Champion"))
-                ro("Title",                     ov.get("Technical Champion Title"))
-                ro("Exec Business Sponsor",     ov.get("Exec Business Sponsor"))
-                ro("Title",                     ov.get("Exec Business Sponsor Title"))
-                ro("Customer Participants",     ov.get("Customer Participants"), multiline=True)
-        with rb:
+                champion      = st.text_input("Technical Champion",          value=ov.get("Technical Champion", ""),       disabled=not unlocked(ov.get("Technical Champion")))
+                champ_title   = st.text_input("Technical Champion Title",    value=ov.get("Technical Champion Title", ""),  disabled=not unlocked(ov.get("Technical Champion Title")))
+                sponsor       = st.text_input("Exec Business Sponsor",       value=ov.get("Exec Business Sponsor", ""),    disabled=not unlocked(ov.get("Exec Business Sponsor")))
+                sponsor_title = st.text_input("Exec Business Sponsor Title", value=ov.get("Exec Business Sponsor Title",""),disabled=not unlocked(ov.get("Exec Business Sponsor Title")))
+                participants  = st.text_area("Customer Participants",         value=ov.get("Customer Participants", ""),    disabled=not unlocked(ov.get("Customer Participants")),
+                                             height=80, placeholder="Jane Smith (Data Engineer), John Doe (IT Lead)…")
+
+        with col_b:
             with st.container(border=True):
                 st.markdown("**Engagement**")
-                ro("Business Unit",             ov.get("Business Unit"))
-                ro("Cloud Environment",         ov.get("Cloud Environment"))
-                ro("Current Data Platform",     ov.get("Current Data Platform"))
-                ro("Data Volume",               ov.get("Data Volume"))
-                ro("Compliance",                ov.get("Compliance Requirements"))
+                bu = st.selectbox("Business Unit", BUSINESS_UNITS,
+                    index=BUSINESS_UNITS.index(ov["Business Unit"]) if ov.get("Business Unit") in BUSINESS_UNITS else 0,
+                    disabled=not unlocked(ov.get("Business Unit")))
+                cloud = st.selectbox("Cloud Environment", CLOUD_OPTIONS,
+                    index=CLOUD_OPTIONS.index(ov["Cloud Environment"]) if ov.get("Cloud Environment") in CLOUD_OPTIONS else 0,
+                    disabled=not unlocked(ov.get("Cloud Environment")))
+                platform   = st.text_input("Current Data Platform", value=ov.get("Current Data Platform", ""), disabled=not unlocked(ov.get("Current Data Platform")))
+                volume     = st.text_input("Estimated Data Volume",  value=ov.get("Data Volume", ""),           disabled=not unlocked(ov.get("Data Volume")))
+                saved_c    = [x.strip() for x in ov.get("Compliance Requirements", "").split(",") if x.strip()]
+                compliance = st.multiselect("Compliance", COMPLIANCE_OPTIONS,
+                    default=[x for x in saved_c if x in COMPLIANCE_OPTIONS],
+                    disabled=not unlocked(ov.get("Compliance Requirements")))
 
         with st.container(border=True):
             st.markdown("**Timeline & Status**")
-            tc1, tc2, tc3 = st.columns(3)
-            with tc1: ro("Start Date",         ov.get("POC Start Date"))
-            with tc2: ro("Target Completion",  ov.get("Target Completion Date"))
-            with tc3: ro("Status",             ov.get("Status"))
+            t1, t2, t3 = st.columns(3)
+            with t1:
+                start_date = st.date_input("Start Date",        value=parse_date(ov.get("POC Start Date", "")),
+                    disabled=not unlocked(ov.get("POC Start Date", "")))
+            with t2:
+                end_date   = st.date_input("Target Completion", value=parse_date(ov.get("Target Completion Date", "")),
+                    disabled=not unlocked(ov.get("Target Completion Date", "")))
+            with t3:
+                status = st.selectbox("POC Status", STATUS_OPTIONS,
+                    index=STATUS_OPTIONS.index(ov["Status"]) if ov.get("Status") in STATUS_OPTIONS else 0,
+                    disabled=not unlocked(ov.get("Status")))
 
         with st.container(border=True):
             st.markdown("**Objectives & Success Criteria**")
-            ro("POC Objective",                ov.get("POC Objective"),              multiline=True)
-            oc1, oc2 = st.columns(2)
-            with oc1: ro("Technical Success Criteria", ov.get("Technical Success Criteria"), multiline=True)
-            with oc2: ro("Business Success Criteria",  ov.get("Business Success Criteria"),  multiline=True)
+            objective = st.text_area("POC Objective",            value=ov.get("POC Objective", ""),              height=80, disabled=not unlocked(ov.get("POC Objective")))
+            o1, o2 = st.columns(2)
+            with o1:
+                tc = st.text_area("Technical Success Criteria",  value=ov.get("Technical Success Criteria", ""), height=90, disabled=not unlocked(ov.get("Technical Success Criteria")))
+            with o2:
+                bc = st.text_area("Business Success Criteria",   value=ov.get("Business Success Criteria", ""),  height=90, disabled=not unlocked(ov.get("Business Success Criteria")))
 
         with st.container(border=True):
             st.markdown("**Budget**")
-            bc1, bc2 = st.columns(2)
-            with bc1: ro("POC Budget",         fmt_money(ov.get("POC Budget ($)", "")))
-            with bc2: ro("Confirmed Spend",    fmt_money(ov.get("Confirmed Spend ($)", "")))
+            b1, b2 = st.columns(2)
+            with b1:
+                poc_budget = st.text_input("POC Budget ($)",      value=ov.get("POC Budget ($)", ""),      placeholder="e.g. 50000", disabled=not unlocked(ov.get("POC Budget ($)")))
+            with b2:
+                conf_spend = st.text_input("Confirmed Spend ($)", value=ov.get("Confirmed Spend ($)", ""), placeholder="0",           disabled=not unlocked(ov.get("Confirmed Spend ($)")))
 
-    # ── Edit form ──────────────────────────────────────────────────────────
-    else:
-        hdr_l, hdr_r = st.columns([6, 1])
-        with hdr_l:
-            st.markdown("**Edit POC Details**")
-        with hdr_r:
-            if details_filled and st.button("✕ Cancel", key="cancel_btn"):
-                st.session_state["editing_details"] = False
-                st.rerun()
-
-        with st.form("details_form"):
-            col_a, col_b = st.columns(2)
-
-            with col_a:
-                with st.container(border=True):
-                    st.markdown("**Contacts**")
-                    champion      = st.text_input("Technical Champion",          value=ov.get("Technical Champion", ""))
-                    champ_title   = st.text_input("Technical Champion Title",    value=ov.get("Technical Champion Title", ""))
-                    sponsor       = st.text_input("Exec Business Sponsor",       value=ov.get("Exec Business Sponsor", ""))
-                    sponsor_title = st.text_input("Exec Business Sponsor Title", value=ov.get("Exec Business Sponsor Title", ""))
-                    participants  = st.text_area(
-                        "Customer Participants", value=ov.get("Customer Participants", ""),
-                        height=80, placeholder="Jane Smith (Data Engineer), John Doe (IT Lead)…",
-                    )
-
-            with col_b:
-                with st.container(border=True):
-                    st.markdown("**Engagement**")
-                    bu = st.selectbox(
-                        "Business Unit", BUSINESS_UNITS,
-                        index=BUSINESS_UNITS.index(ov["Business Unit"]) if ov.get("Business Unit") in BUSINESS_UNITS else 0,
-                    )
-                    cloud = st.selectbox(
-                        "Cloud Environment", CLOUD_OPTIONS,
-                        index=CLOUD_OPTIONS.index(ov["Cloud Environment"]) if ov.get("Cloud Environment") in CLOUD_OPTIONS else 0,
-                    )
-                    platform   = st.text_input("Current Data Platform", value=ov.get("Current Data Platform", ""))
-                    volume     = st.text_input("Estimated Data Volume",  value=ov.get("Data Volume", ""))
-                    saved_c    = [x.strip() for x in ov.get("Compliance Requirements", "").split(",") if x.strip()]
-                    compliance = st.multiselect("Compliance", COMPLIANCE_OPTIONS,
-                                                default=[x for x in saved_c if x in COMPLIANCE_OPTIONS])
-
-            with st.container(border=True):
-                st.markdown("**Timeline & Status**")
-                t1, t2, t3 = st.columns(3)
-                with t1:
-                    start_date = st.date_input("Start Date",        value=parse_date(ov.get("POC Start Date", "")))
-                with t2:
-                    end_date   = st.date_input("Target Completion", value=parse_date(ov.get("Target Completion Date", "")))
-                with t3:
-                    status = st.selectbox(
-                        "POC Status", STATUS_OPTIONS,
-                        index=STATUS_OPTIONS.index(ov["Status"]) if ov.get("Status") in STATUS_OPTIONS else 0,
-                    )
-
-            with st.container(border=True):
-                st.markdown("**Objectives & Success Criteria**")
-                objective = st.text_area("POC Objective",             value=ov.get("POC Objective", ""),              height=80)
-                o1, o2 = st.columns(2)
-                with o1:
-                    tc = st.text_area("Technical Success Criteria",   value=ov.get("Technical Success Criteria", ""), height=90)
-                with o2:
-                    bc = st.text_area("Business Success Criteria",    value=ov.get("Business Success Criteria", ""),  height=90)
-
-            with st.container(border=True):
-                st.markdown("**Budget**")
-                b1, b2 = st.columns(2)
-                with b1:
-                    poc_budget = st.text_input("POC Budget ($)",      value=ov.get("POC Budget ($)", ""),      placeholder="e.g. 50000")
-                with b2:
-                    conf_spend = st.text_input("Confirmed Spend ($)", value=ov.get("Confirmed Spend ($)", ""), placeholder="0")
-
-            if st.form_submit_button("💾  Save Details", type="primary", use_container_width=True):
-                with st.spinner("Saving POC details…"):
-                    save_overview({
-                        "Technical Champion":          champion,
-                        "Technical Champion Title":    champ_title,
-                        "Exec Business Sponsor":       sponsor,
-                        "Exec Business Sponsor Title": sponsor_title,
-                        "Customer Participants":       participants,
-                        "Business Unit":               bu,
-                        "Cloud Environment":           cloud,
-                        "Current Data Platform":       platform,
-                        "Data Volume":                 volume,
-                        "Compliance Requirements":     ", ".join(compliance),
-                        "POC Start Date":              str(start_date),
-                        "Target Completion Date":      str(end_date),
-                        "Status":                      status,
-                        "POC Objective":               objective,
-                        "Technical Success Criteria":  tc,
-                        "Business Success Criteria":   bc,
-                        "POC Budget ($)":              poc_budget,
-                        "Confirmed Spend ($)":         conf_spend,
-                    })
-                st.session_state["editing_details"] = False
-                st.session_state["notify"] = "POC details saved successfully ✓"
-                st.rerun()
-
+        if st.form_submit_button("💾  Save Details", type="primary", use_container_width=True):
+            with st.spinner("Saving POC details…"):
+                save_overview({
+                    "Technical Champion":          champion,
+                    "Technical Champion Title":    champ_title,
+                    "Exec Business Sponsor":       sponsor,
+                    "Exec Business Sponsor Title": sponsor_title,
+                    "Customer Participants":       participants,
+                    "Business Unit":               bu,
+                    "Cloud Environment":           cloud,
+                    "Current Data Platform":       platform,
+                    "Data Volume":                 volume,
+                    "Compliance Requirements":     ", ".join(compliance),
+                    "POC Start Date":              str(start_date),
+                    "Target Completion Date":      str(end_date),
+                    "Status":                      status,
+                    "POC Objective":               objective,
+                    "Technical Success Criteria":  tc,
+                    "Business Success Criteria":   bc,
+                    "POC Budget ($)":              poc_budget,
+                    "Confirmed Spend ($)":         conf_spend,
+                })
+            st.session_state["editing_details"] = False
+            st.session_state["notify"] = "POC details saved successfully ✓"
+            st.rerun()
 
